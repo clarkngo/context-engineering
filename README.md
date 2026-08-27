@@ -22,6 +22,8 @@ memory).
 - **Budget diagram** — an interactive stacked bar showing a 200K-token window
   under four example scenarios (simple Q&A, RAG chatbot, long-running agent
   loop, cached coding assistant), to make "finite, shared budget" concrete.
+- **In practice** — how GitHub Copilot, Gemini, Claude Code, and Cursor each
+  approach the same budget problem, mapped back to the pattern catalog.
 
 ## Stack
 

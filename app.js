@@ -23,6 +23,29 @@ function renderPatternCard(pattern) {
   return card;
 }
 
+function renderPracticeCard(item) {
+  const card = document.createElement('article');
+  card.className = 'card';
+  card.style.setProperty('--card-accent', item.accent);
+
+  const tags = (item.tags || [])
+    .map((t) => `<span class="tag">${t}</span>`)
+    .join('');
+
+  card.innerHTML = `
+    <div class="card-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${item.icon}</svg>
+    </div>
+    <div class="card-body">
+      <h3 class="card-title">${item.title}</h3>
+      <p class="card-label">Approach</p>
+      <p class="card-text">${item.approach}</p>
+      <div class="tag-row">${tags}</div>
+    </div>
+  `;
+  return card;
+}
+
 function renderAntipatternCard(item) {
   const card = document.createElement('article');
   card.className = 'card card-warn';
@@ -132,6 +155,7 @@ async function init() {
   initThemeToggle();
 
   const patternsGrid = document.getElementById('patterns-grid');
+  const practiceGrid = document.getElementById('inpractice-grid');
   const antipatternsGrid = document.getElementById('antipatterns-grid');
 
   try {
@@ -140,6 +164,7 @@ async function init() {
 
     if (data.budget) renderBudget(data.budget);
     data.patterns.forEach((p) => patternsGrid.appendChild(renderPatternCard(p)));
+    (data.inpractice || []).forEach((i) => practiceGrid.appendChild(renderPracticeCard(i)));
     data.antipatterns.forEach((a) => antipatternsGrid.appendChild(renderAntipatternCard(a)));
   } catch (err) {
     const msg = '<p class="load-error">Couldn\'t load the pattern catalog. Try refreshing.</p>';

@@ -91,6 +91,40 @@
       "tags": ["injection", "structure", "prompt-format"]
     }
   ],
+  "inpractice": [
+    {
+      "id": "copilot",
+      "title": "GitHub Copilot",
+      "accent": "#4338ca",
+      "icon": "<polyline points=\"16 18 22 12 16 6\"/><polyline points=\"8 6 2 12 8 18\"/>",
+      "approach": "Leans on cheap, ambient signal over deep retrieval: inline completions are shaped mostly by neighboring open tabs and recent edits, not a full-repo index, keeping the always-on completion loop fast. Chat and workspace features add embedding-based retrieval over the repository on top of that for broader, explicit questions.",
+      "tags": ["retrieval", "chunking"]
+    },
+    {
+      "id": "gemini",
+      "title": "Gemini",
+      "accent": "#6366f1",
+      "icon": "<polyline points=\"15 3 21 3 21 9\"/><polyline points=\"9 21 3 21 3 15\"/><line x1=\"21\" y1=\"3\" x2=\"14\" y2=\"10\"/><line x1=\"3\" y1=\"21\" x2=\"10\" y2=\"14\"/>",
+      "approach": "Takes the most direct route to the budget problem: a native context window large enough — well into the millions of tokens on its larger-context models — that many chunking and retrieval decisions become optional rather than mandatory. An explicit context-caching API lets large, stable material be cached once and reused across calls at a fraction of the cost of resending it. A bigger window changes the shape of the problem, not its existence — lost-in-the-middle risk doesn't disappear just because there's more room.",
+      "tags": ["caching", "chunking"]
+    },
+    {
+      "id": "claude",
+      "title": "Claude Code",
+      "accent": "#334155",
+      "icon": "<rect x=\"4\" y=\"4\" width=\"16\" height=\"16\" rx=\"2\"/><rect x=\"9\" y=\"9\" width=\"6\" height=\"6\"/><path d=\"M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2\"/>",
+      "approach": "Combines several patterns from the catalog directly: a persistent memory file loaded at the start of every session; a stable prefix — system prompt, tool definitions — cached explicitly so only the changing suffix is reprocessed each turn; long sessions auto-summarized before they overflow; and subagents that do exploratory work in their own isolated context window, returning only a synthesized result to the main thread instead of the raw search output.",
+      "tags": ["memory", "caching", "summarization", "agents"]
+    },
+    {
+      "id": "cursor",
+      "title": "Cursor",
+      "accent": "#1e293b",
+      "icon": "<polyline points=\"4 17 10 11 4 5\"/><line x1=\"12\" y1=\"19\" x2=\"20\" y2=\"19\"/>",
+      "approach": "Puts the user in the loop as the primary context-selection mechanism — @file, @folder, and @codebase let you decide exactly what enters the window, backed by an embeddings index over the repo for the @codebase case. Persistent rules files act as standing project instructions loaded every session, and edits are applied as targeted diffs rather than full file rewrites, so unchanged code doesn't keep spending budget.",
+      "tags": ["retrieval", "memory", "structure"]
+    }
+  ],
   "antipatterns": [
     {
       "id": "context-rot",
