@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script>
+  try {
+    var t = localStorage.getItem('theme');
+    if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+  } catch (e) {}
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Context Engineering</title>
+<meta name="description" content="A reference and pattern guide for context engineering — deciding what actually goes into an LLM's context window, and why. Patterns, anti-patterns, and the budget tradeoffs behind them.">
+<link rel="canonical" href="https://clarkngo.github.io/context-engineering/">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta property="og:title" content="Context Engineering">
+<meta property="og:description" content="A reference and pattern guide for context engineering — deciding what actually goes into an LLM's context window, and why.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://clarkngo.github.io/context-engineering/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Context Engineering">
+<meta name="twitter:description" content="A reference and pattern guide for context engineering — deciding what actually goes into an LLM's context window, and why.">
+<style>
+  :root {
+    --bg: #f4f5f8;
+    --bg-alt: #ffffff;
+    --text: #14161c;
+    --text-muted: #5b5f6d;
+    --border: #e3e5ec;
+    --accent-1: #4338ca;
+    --accent-2: #475569;
+    --accent-3: #b45309;
+    --card-shadow: 0 1px 2px rgba(20,21,26,0.04), 0 8px 24px rgba(20,21,26,0.06);
+    --card-shadow-hover: 0 4px 8px rgba(20,21,26,0.06), 0 16px 40px rgba(20,21,26,0.12);
+    --focus-ring: #4338ca;
+    --toggle-bg: rgba(20,21,26,0.06);
+    --toggle-bg-hover: rgba(20,21,26,0.1);
+    --tag-bg: rgba(67,56,202,0.08);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0d0e13;
+      --bg-alt: #15171e;
+      --text: #eef0f4;
+      --text-muted: #9aa0b0;
+      --border: #262933;
+      --accent-1: #818cf8;
+      --accent-2: #94a3b8;
+      --accent-3: #fbbf24;
+      --card-shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+      --card-shadow-hover: 0 4px 8px rgba(0,0,0,0.35), 0 16px 40px rgba(0,0,0,0.5);
+      --focus-ring: #818cf8;
+      --toggle-bg: rgba(255,255,255,0.08);
+      --toggle-bg-hover: rgba(255,255,255,0.14);
+      --tag-bg: rgba(129,140,248,0.12);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #0d0e13;
+    --bg-alt: #15171e;
+    --text: #eef0f4;
+    --text-muted: #9aa0b0;
+    --border: #262933;
+    --accent-1: #818cf8;
+    --accent-2: #94a3b8;
+    --accent-3: #fbbf24;
+    --card-shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+    --card-shadow-hover: 0 4px 8px rgba(0,0,0,0.35), 0 16px 40px rgba(0,0,0,0.5);
+    --focus-ring: #818cf8;
+    --toggle-bg: rgba(255,255,255,0.08);
+    --toggle-bg-hover: rgba(255,255,255,0.14);
+    --tag-bg: rgba(129,140,248,0.12);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: inherit; }
+
+  :focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 3px;
+  }
+
+  .skip-link {
+    position: absolute;
+    left: -9999px;
+    top: 0;
+    background: var(--bg-alt);
+    color: var(--text);
+    padding: 0.75rem 1.25rem;
+    border-radius: 0 0 8px 0;
+    z-index: 100;
+  }
+
+  .skip-link:focus {
+    left: 0;
+  }
+
+  .hero {
+    position: relative;
+    padding: 5.5rem 1.5rem 3rem;
+    text-align: center;
+    overflow: hidden;
+    background:
+      radial-gradient(60% 90% at 15% 0%, color-mix(in srgb, var(--accent-1) 16%, transparent), transparent 70%),
+      radial-gradient(50% 80% at 90% 10%, color-mix(in srgb, var(--accent-2) 14%, transparent), transparent 70%);
+  }
+
+  .theme-toggle {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 999px;
+    background: var(--toggle-bg);
+    color: var(--text);
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+
+  .theme-toggle:hover {
+    background: var(--toggle-bg-hover);
+  }
+
+  .theme-toggle svg {
+    width: 1.15rem;
+    height: 1.15rem;
+  }
+
+  .eyebrow {
+    display: inline-block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent-2);
+    margin-bottom: 1rem;
+  }
+
+  .hero h1 {
+    margin: 0;
+    font-size: clamp(2.5rem, 6vw, 4rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    background: linear-gradient(120deg, var(--accent-1), var(--accent-2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .hero p {
+    margin: 1rem auto 0;
+    max-width: 38rem;
+    font-size: 1.15rem;
+    color: var(--text-muted);
+  }
+
+  .hero-nav {
+    margin-top: 1.75rem;
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .hero-nav a {
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+    color: var(--text);
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    transition: border-color 0.15s ease, transform 0.15s ease;
+  }
+
+  .hero-nav a:hover {
+    border-color: var(--accent-1);
+    transform: translateY(-1px);
+  }
+
+  main {
+    max-width: 72rem;
+    margin: 0 auto;
+    padding: 0 1.5rem 5rem;
+  }
+
+  .framing {
+    max-width: 46rem;
+    margin: 0 auto 4rem;
+    padding: 2rem 2.25rem;
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent-1);
+    border-radius: 12px;
+    box-shadow: var(--card-shadow);
+  }
+
+  .framing h2 {
+    margin: 0 0 0.75rem;
+    font-size: 1.15rem;
+    font-weight: 700;
+  }
+
+  .framing p {
+    margin: 0 0 0.9rem;
+    color: var(--text-muted);
+    line-height: 1.65;
+    font-size: 0.98rem;
+  }
+
+  .framing p:last-child {
+    margin-bottom: 0;
+  }
+
+  .framing strong {
+    color: var(--text);
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+  }
+
+  section + section {
+    margin-top: 4rem;
+  }
+
+  .section-head {
+    margin: 0 0 1.5rem;
+    scroll-margin-top: 1.5rem;
+  }
+
+  .section-title {
+    margin: 0 0 0.4rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .section-sub {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--text-muted);
+    max-width: 42rem;
+  }
+
+  .load-error {
+    text-align: center;
+    color: var(--text-muted);
+    padding: 3rem 0;
+  }
+
+  .card {
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: var(--card-shadow);
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+
+  .card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--card-shadow-hover);
+    border-color: color-mix(in srgb, var(--card-accent, var(--accent-3)) 40%, var(--border));
+  }
+
+  .card-icon {
+    height: 6.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--card-accent, var(--accent-3)) 85%, black 0%), color-mix(in srgb, var(--card-accent, var(--accent-3)) 60%, black 20%));
+  }
+
+  .card-icon svg {
+    width: 2.25rem;
+    height: 2.25rem;
+    stroke: white;
+  }
+
+  .card-body {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+
+  .card-title {
+    margin: 0 0 0.75rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+
+  .card-label {
+    margin: 0.75rem 0 0.25rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--card-accent, var(--accent-3));
+  }
+
+  .card-body > .card-label:first-of-type {
+    margin-top: 0;
+  }
+
+  .card-text {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.92rem;
+    line-height: 1.55;
+  }
+
+  .tag-row {
+    margin-top: 1.25rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .tag {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--card-accent, var(--accent-1));
+    background: var(--tag-bg);
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+  }
+
+  .card-warn .card-icon {
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent-3) 85%, black 0%), color-mix(in srgb, var(--accent-3) 60%, black 20%));
+  }
+
+  .card-warn:hover {
+    border-color: color-mix(in srgb, var(--accent-3) 40%, var(--border));
+  }
+
+  .card-warn .card-body {
+    justify-content: center;
+  }
+
+  footer {
+    text-align: center;
+    padding: 2rem 1.5rem 3rem;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+  }
+
+  footer a {
+    color: var(--text-muted);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card { transition: none; }
+    .card:hover { transform: none; }
+  }
+</style>
+</head>
+<body>
+
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="hero">
+    <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Toggle color theme"></button>
+    <span class="eyebrow">Clark Ngo</span>
+    <h1>Context Engineering</h1>
+    <p>Deciding what actually goes into an LLM's context window, and why — a finite, shared budget, not a scratchpad.</p>
+    <nav class="hero-nav" aria-label="Section navigation">
+      <a href="#patterns">Pattern catalog</a>
+      <a href="#antipatterns">Anti-patterns</a>
+    </nav>
+  </header>
+
+  <main id="main">
+
+    <div class="framing">
+      <h2>The context window is a budget, not a scratchpad</h2>
+      <p><strong>Prompt engineering</strong> is about phrasing — how you word an instruction so a model follows it. <strong>Context engineering</strong> is about budget — deciding, out of everything that could go into the window, what actually does: which documents get retrieved, how much conversation history survives, which tool results get kept in full versus summarized, what's cached versus regenerated fresh.</p>
+      <p>A context window is finite and shared. Every token spent on one thing is a token unavailable for another. Most of the failures teams blame on "the model" — hallucination, contradicting itself mid-conversation, missing an instruction that was buried early in a long prompt, giving a confident answer that was true an hour ago but isn't now — trace back to what was or wasn't in context when the model generated its response, not to a capability gap.</p>
+      <p>This is a working reference for that decision: recurring patterns for managing the budget, the tradeoff each one makes, and the failure modes that show up when nobody's managing it at all.</p>
+    </div>
+
+    <section id="patterns">
+      <div class="section-head">
+        <h2 class="section-title">Pattern catalog</h2>
+        <p class="section-sub">Six recurring approaches to deciding what's in context — each solving a specific pressure on the budget, each with a real cost attached.</p>
+      </div>
+      <div id="patterns-grid" class="grid"></div>
+    </section>
+
+    <section id="antipatterns">
+      <div class="section-head">
+        <h2 class="section-title">Anti-patterns</h2>
+        <p class="section-sub">Ways context budgets quietly go wrong — usually without an error message, until the output is already off.</p>
+      </div>
+      <div id="antipatterns-grid" class="grid"></div>
+    </section>
+
+  </main>
+
+  <footer>
+    <p>Built by <a href="https://github.com/clarkngo" target="_blank" rel="noopener">Clark Ngo</a> · <a href="https://github.com/clarkngo/context-engineering" target="_blank" rel="noopener">Source</a></p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
