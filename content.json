@@ -1,4 +1,40 @@
 {
+  "budget": {
+    "window": 200000,
+    "segments": [
+      { "key": "system", "label": "System prompt", "color": "#312e81" },
+      { "key": "tools", "label": "Tool schemas", "color": "#4338ca" },
+      { "key": "docs", "label": "Retrieved docs", "color": "#6366f1" },
+      { "key": "history", "label": "Conversation history", "color": "#475569" },
+      { "key": "user", "label": "User turn", "color": "#1e293b" }
+    ],
+    "scenarios": [
+      {
+        "id": "simple-qa",
+        "label": "Simple Q&A",
+        "values": { "system": 800, "tools": 0, "docs": 0, "history": 1200, "user": 200 },
+        "note": "A short, stateless question with no retrieval and no tools. Almost the entire window is free — budget isn't the bottleneck here."
+      },
+      {
+        "id": "rag-chatbot",
+        "label": "RAG Chatbot",
+        "values": { "system": 1500, "tools": 2000, "docs": 18000, "history": 6000, "user": 300 },
+        "note": "Retrieved documents are the single biggest line item. Chunking strategy decides whether that's 18K tokens of signal or 18K tokens of padding."
+      },
+      {
+        "id": "long-running-agent",
+        "label": "Long-running Agent Loop",
+        "values": { "system": 3000, "tools": 12000, "docs": 20000, "history": 162000, "user": 500 },
+        "note": "Every tool call, retry, and intermediate result got appended and nothing was pruned — unbounded context growth in practice. About 1% of the window is left before the model starts losing information it hasn't even seen yet."
+      },
+      {
+        "id": "cached-coding-assistant",
+        "label": "Coding Assistant (cached prefix)",
+        "values": { "system": 4000, "tools": 8000, "docs": 45000, "history": 15000, "user": 400 },
+        "note": "System prompt and tool schemas are cached and reused across turns — cheap to keep, expensive to reorder. Retrieved code context is the real cost center."
+      }
+    ]
+  },
   "patterns": [
     {
       "id": "rag-chunking",

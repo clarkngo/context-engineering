@@ -19,6 +19,9 @@ memory).
   it solves, the tradeoff it makes, and tags.
 - **Anti-patterns** — context rot, lost-in-the-middle, redundant context,
   unbounded context growth in agent loops.
+- **Budget diagram** — an interactive stacked bar showing a 200K-token window
+  under four example scenarios (simple Q&A, RAG chatbot, long-running agent
+  loop, cached coding assistant), to make "finite, shared budget" concrete.
 
 ## Stack
 
@@ -30,7 +33,5 @@ toggle (persisted to `localStorage`). Deploys to GitHub Pages on every push to
 
 ## Status
 
-First pass: landing page, pattern catalog, and anti-pattern section are done
-as static content. An interactive context-budget diagram (a stacked bar for
-system prompt / tools / retrieved docs / history / user turn, driven by
-example scenarios) is planned as a follow-up.
+Landing page, pattern catalog, anti-pattern section, and the interactive
+budget diagram are all in place.

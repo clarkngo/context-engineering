@@ -362,6 +362,134 @@
     justify-content: center;
   }
 
+  .budget-panel {
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: var(--card-shadow);
+    padding: 2rem;
+  }
+
+  .scenario-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .scenario-tab {
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 0.55rem 1rem;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+  }
+
+  .scenario-tab:hover {
+    color: var(--text);
+    border-color: var(--accent-1);
+  }
+
+  .scenario-tab[aria-selected="true"] {
+    color: #fff;
+    background: var(--accent-1);
+    border-color: var(--accent-1);
+  }
+
+  .budget-readout {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+  }
+
+  .budget-readout strong {
+    font-size: 1.15rem;
+    color: var(--text);
+  }
+
+  .budget-bar {
+    display: flex;
+    width: 100%;
+    height: 2.75rem;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    background: var(--bg);
+  }
+
+  .budget-seg {
+    height: 100%;
+    transition: width 0.4s ease;
+    min-width: 0;
+  }
+
+  .budget-seg.is-free {
+    background: repeating-linear-gradient(
+      135deg,
+      var(--bg),
+      var(--bg) 6px,
+      var(--border) 6px,
+      var(--border) 7px
+    );
+  }
+
+  .budget-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.5rem;
+    margin-top: 1.25rem;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+
+  .legend-swatch {
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+  .legend-swatch.is-free {
+    background: repeating-linear-gradient(
+      135deg,
+      var(--bg),
+      var(--bg) 3px,
+      var(--border) 3px,
+      var(--border) 4px
+    );
+    border: 1px solid var(--border);
+  }
+
+  .legend-item strong {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .budget-note {
+    margin: 1.5rem 0 0;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 0.92rem;
+    line-height: 1.6;
+  }
+
   footer {
     text-align: center;
     padding: 2rem 1.5rem 3rem;
@@ -391,6 +519,7 @@
     <h1>Context Engineering</h1>
     <p>Deciding what actually goes into an LLM's context window, and why — a finite, shared budget, not a scratchpad.</p>
     <nav class="hero-nav" aria-label="Section navigation">
+      <a href="#budget">Budget diagram</a>
       <a href="#patterns">Pattern catalog</a>
       <a href="#antipatterns">Anti-patterns</a>
     </nav>
@@ -404,6 +533,20 @@
       <p>A context window is finite and shared. Every token spent on one thing is a token unavailable for another. Most of the failures teams blame on "the model" — hallucination, contradicting itself mid-conversation, missing an instruction that was buried early in a long prompt, giving a confident answer that was true an hour ago but isn't now — trace back to what was or wasn't in context when the model generated its response, not to a capability gap.</p>
       <p>This is a working reference for that decision: recurring patterns for managing the budget, the tradeoff each one makes, and the failure modes that show up when nobody's managing it at all.</p>
     </div>
+
+    <section id="budget">
+      <div class="section-head">
+        <h2 class="section-title">Budget diagram</h2>
+        <p class="section-sub">The same 200K-token window under four different workloads — same size, wildly different amounts of room left for the model to actually think.</p>
+      </div>
+      <div class="budget-panel">
+        <div id="scenario-tabs" class="scenario-tabs" role="tablist" aria-label="Example scenarios"></div>
+        <div id="budget-readout" class="budget-readout"></div>
+        <div id="budget-bar" class="budget-bar" role="img"></div>
+        <div id="budget-legend" class="budget-legend"></div>
+        <p id="budget-note" class="budget-note"></p>
+      </div>
+    </section>
 
     <section id="patterns">
       <div class="section-head">

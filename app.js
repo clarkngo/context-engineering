@@ -39,6 +39,63 @@ function renderAntipatternCard(item) {
   return card;
 }
 
+function formatTokens(n) {
+  return n.toLocaleString('en-US');
+}
+
+function renderBudget(budget) {
+  const tabsEl = document.getElementById('scenario-tabs');
+  const readoutEl = document.getElementById('budget-readout');
+  const barEl = document.getElementById('budget-bar');
+  const legendEl = document.getElementById('budget-legend');
+  const noteEl = document.getElementById('budget-note');
+  if (!tabsEl) return;
+
+  function paint(scenario) {
+    const used = budget.segments.reduce((sum, seg) => sum + (scenario.values[seg.key] || 0), 0);
+    const free = Math.max(budget.window - used, 0);
+    const pct = Math.round((used / budget.window) * 100);
+
+    readoutEl.innerHTML = `<span><strong>${formatTokens(used)}</strong> / ${formatTokens(budget.window)} tokens used</span><span>${pct}% of window</span>`;
+
+    barEl.setAttribute('aria-label', `${scenario.label}: ${pct}% of the ${formatTokens(budget.window)}-token window in use.`);
+    barEl.innerHTML = budget.segments
+      .map((seg) => {
+        const tokens = scenario.values[seg.key] || 0;
+        const width = (tokens / budget.window) * 100;
+        if (width <= 0) return '';
+        return `<div class="budget-seg" style="width:${width}%; background:${seg.color};" title="${seg.label}: ${formatTokens(tokens)} tokens"></div>`;
+      })
+      .join('') + `<div class="budget-seg is-free" style="width:${(free / budget.window) * 100}%;" title="Free: ${formatTokens(free)} tokens"></div>`;
+
+    legendEl.innerHTML = budget.segments
+      .map((seg) => {
+        const tokens = scenario.values[seg.key] || 0;
+        return `<span class="legend-item"><span class="legend-swatch" style="background:${seg.color};"></span>${seg.label}: <strong>${formatTokens(tokens)}</strong></span>`;
+      })
+      .join('') + `<span class="legend-item"><span class="legend-swatch is-free"></span>Free: <strong>${formatTokens(free)}</strong></span>`;
+
+    noteEl.textContent = scenario.note;
+  }
+
+  budget.scenarios.forEach((scenario, i) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'scenario-tab';
+    btn.textContent = scenario.label;
+    btn.setAttribute('role', 'tab');
+    btn.setAttribute('aria-selected', i === 0 ? 'true' : 'false');
+    btn.addEventListener('click', () => {
+      tabsEl.querySelectorAll('.scenario-tab').forEach((t) => t.setAttribute('aria-selected', 'false'));
+      btn.setAttribute('aria-selected', 'true');
+      paint(scenario);
+    });
+    tabsEl.appendChild(btn);
+  });
+
+  paint(budget.scenarios[0]);
+}
+
 function currentTheme() {
   const attr = document.documentElement.getAttribute('data-theme');
   if (attr === 'light' || attr === 'dark') return attr;
@@ -81,6 +138,7 @@ async function init() {
     const res = await fetch('content.json', { cache: 'no-store' });
     const data = await res.json();
 
+    if (data.budget) renderBudget(data.budget);
     data.patterns.forEach((p) => patternsGrid.appendChild(renderPatternCard(p)));
     data.antipatterns.forEach((a) => antipatternsGrid.appendChild(renderAntipatternCard(a)));
   } catch (err) {
